@@ -5,6 +5,7 @@ default_role: worker
 
 environment:
   capabilities:
+    - git
     - factorio_server
   envelope:
     allowed_images:
