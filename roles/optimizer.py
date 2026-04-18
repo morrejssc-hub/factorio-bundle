@@ -8,4 +8,5 @@ def optimizer() -> JobSpec:
     return JobSpec(
         system_prompt="prompts/optimizer.md",
         tools=["bash", "spawn"],
+        context_sections=["recent_observations"],
     )
