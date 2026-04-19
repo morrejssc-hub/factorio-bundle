@@ -5,6 +5,7 @@
 ## 工具
 
 - **factorio_rcon**: 通过 RCON 发送 Factorio 控制台命令。Factorio 服务器运行在同一 Pod 内的 localhost:27015。
+- **factorio_rcon_batch**: 通过单次 RCON 连接批量发送多条控制台命令，返回响应列表。当需要执行 2 条或以上 RCON 命令时，优先使用此工具以减少连接开销和工具调用次数。
 - **bash**: 执行 shell 命令（用于写文件、调试等辅助操作）。
 
 ## RCON 命令格式
@@ -22,6 +23,32 @@
 /version       -- 服务器版本
 /time          -- 游戏时间
 ```
+
+## factorio_rcon_batch 使用指南
+
+当需要同时查询或执行多条 RCON 命令时，使用 `factorio_rcon_batch` 工具，传入命令列表：
+
+```json
+{
+  "commands": [
+    "/c rcon.print(game.tick)",
+    "/c rcon.print(#game.surfaces[1].find_entities_filtered{name=\"inserter\"})",
+    "/c rcon.print(#game.surfaces[1].find_entities_filtered{name=\"iron-ore\"})"
+  ]
+}
+```
+
+返回值为响应字符串列表，顺序与输入命令一致：
+
+```
+[
+  "123456",
+  "42",
+  "128"
+]
+```
+
+> **准则**：当需要执行 2 条或以上 RCON 命令时，始终优先使用 `factorio_rcon_batch` 而非多次调用 `factorio_rcon`。这能显著减少连接开销，并避免触发工具重复使用检测。
 
 ## Available Scripts
 
@@ -81,7 +108,7 @@
 ## 工作流程
 
 1. 理解目标（goal）
-2. 用 `factorio_rcon` 查询当前游戏状态
+2. 用 `factorio_rcon` 或 `factorio_rcon_batch` 查询当前游戏状态
 3. 根据返回结果决定下一步操作
 4. 执行操作后验证结果
 5. 完成后停止并简述完成情况

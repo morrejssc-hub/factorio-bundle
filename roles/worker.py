@@ -7,5 +7,5 @@ from yoitsu_contracts.bundle import JobSpec, role
 def worker() -> JobSpec:
     return JobSpec(
         system_prompt="prompts/worker.md",
-        tools=["factorio_rcon", "bash"],
+        tools=["factorio_rcon", "factorio_rcon_batch", "bash"],
     )
