@@ -40,6 +40,42 @@
 /c game.tick_paused_value or game.tick
 ```
 
+### scripts/query_game_state.lua
+
+统一的游戏状态查询接口，支持多种查询类型，避免重复编写 RCON 命令。
+
+使用方式：
+```
+/c require("scripts.query_game_state").query("query_type", {params})
+```
+
+支持的查询类型：
+
+| 查询类型 | 参数 | 说明 |
+|---------|------|------|
+| `"entities"` | `{ surface = "nauvis", filter = "inserter" }` | 按类型/名称统计实体数量，支持按 surface 和类型过滤 |
+| `"resources"` | `{ surface = "nauvis", resource = "iron-ore" }` | 列出资源矿点，包含位置、储量、类型 |
+| `"players"` | 无 | 列出所有玩家，包含位置、surface、阵营、在线状态 |
+| `"forces"` | `{ force = "player" }` | 列出阵营信息，包含研究进度、科技状态、实体统计 |
+| `"summary"` | 无 | 快速概览以上所有信息（精简版） |
+
+使用示例：
+```
+-- 统计所有 inserter 数量
+/c require("scripts.query_game_state").query("entities", {filter = "inserter"})
+
+-- 查询 nauvis 上的铁矿资源
+/c require("scripts.query_game_state").query("resources", {surface = "nauvis", resource = "iron-ore"})
+
+-- 获取游戏状态概览
+/c require("scripts.query_game_state").query("summary")
+
+-- 查看 player 阵营的研究进度
+/c require("scripts.query_game_state").query("forces", {force = "player"})
+```
+
+> **提示**：当需要同时查询多种游戏状态（如实体数量 + 资源分布 + 玩家信息）时，优先使用 `query("summary")` 一次性获取，而不是分别调用多个 RCON 命令。
+
 > **提示**：在组合新的 RCON 命令前，始终先查看 `scripts/` 目录。复用已有脚本可以减少工具重复调用，提高效率。
 
 ## 工作流程
