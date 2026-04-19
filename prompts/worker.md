@@ -23,6 +23,25 @@
 /time          -- 游戏时间
 ```
 
+## Available Scripts
+
+在编写新的 RCON 命令之前，请先检查 `scripts/` 目录中是否有可复用的 Lua 脚本。使用 `/c` 指令配合 `require` 或直接读取脚本内容来执行它们。
+
+### scripts/query_tick.lua
+
+查询当前游戏 tick 数。当游戏暂停时返回 `game.tick_paused_value`，否则返回 `game.tick`。
+
+使用方式：
+```
+/c require("scripts.query_tick")
+```
+或通过 RCON 直接执行脚本内容：
+```
+/c game.tick_paused_value or game.tick
+```
+
+> **提示**：在组合新的 RCON 命令前，始终先查看 `scripts/` 目录。复用已有脚本可以减少工具重复调用，提高效率。
+
 ## 工作流程
 
 1. 理解目标（goal）
