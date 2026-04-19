@@ -17,7 +17,7 @@ from coordinator.git_ops import git_clone, git_push, read_head_sha
 
 logger = logging.getLogger(__name__)
 
-_PUSH_ROLES = ("worker", "architect")
+_PUSH_ROLES = ("worker", "architect", "implementer")
 
 
 def setup(ctx: CapabilityContext) -> CapabilityResult:
