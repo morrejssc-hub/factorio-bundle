@@ -202,16 +202,14 @@ local function query_forces(params)
         end
       end
 
-      -- Entity counts per force
+      -- Entity counts per force (using efficient force.get_entity_counts() API)
       local entity_counts = {}
-      for _, surface in pairs(game.surfaces) do
-        if surface and surface.valid then
-          local entities = surface.find_entities_filtered({ force = force.name })
-          for _, entity in pairs(entities) do
-            local key = entity.name
-            entity_counts[key] = (entity_counts[key] or 0) + 1
-          end
-        end
+      local total_entities = 0
+      local unique_types = 0
+      for name, count in pairs(force.get_entity_counts()) do
+        entity_counts[name] = count
+        total_entities = total_entities + count
+        unique_types = unique_types + 1
       end
 
       table.insert(forces, {
@@ -221,12 +219,8 @@ local function query_forces(params)
           researched = researched_count,
           available = available_count,
         },
-        entity_count = #entity_counts,
-        total_entities = (function()
-          local total = 0
-          for _, c in pairs(entity_counts) do total = total + c end
-          return total
-        end)(),
+        entity_count = unique_types,
+        total_entities = total_entities,
       })
     end
   end
