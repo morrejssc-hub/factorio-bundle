@@ -10,47 +10,30 @@ all responses, and then closes the connection.  This avoids the per-command
 TCP connect/auth/close overhead when a worker needs to issue several queries
 (e.g. tick, entities, resources) in sequence.
 
-Includes a self-contained Source RCON protocol client so the module has
-no runtime dependencies beyond the stdlib.
+Uses the shared RCON protocol module for packet handling.
 """
 from __future__ import annotations
 
-import os
 import socket
 import struct
 
+from tools.rcon_protocol import (
+    _SERVERDATA_AUTH,
+    _SERVERDATA_AUTH_RESPONSE,
+    _SERVERDATA_EXECCOMMAND,
+    _SERVERDATA_RESPONSE_VALUE,
+    _MAX_OUTPUT,
+    _RCON_HOST,
+    _RCON_PASSWORD,
+    _RCON_PORT,
+    _pack,
+    _recv_exact,
+    _unpack,
+)
+
 # ---------------------------------------------------------------------------
-# Inline Source RCON client (Factorio uses this protocol)
+# Tool definition
 # ---------------------------------------------------------------------------
-
-_SERVERDATA_AUTH = 3
-_SERVERDATA_AUTH_RESPONSE = 2
-_SERVERDATA_EXECCOMMAND = 2
-_SERVERDATA_RESPONSE_VALUE = 0
-
-
-def _pack(request_id: int, ptype: int, body: str) -> bytes:
-    b = body.encode("utf-8")
-    size = 4 + 4 + len(b) + 2
-    return struct.pack(f"<iii{len(b)}scc", size, request_id, ptype, b, b"\x00", b"\x00")
-
-
-def _unpack(data: bytes) -> tuple[int, int, str]:
-    if len(data) < 10:
-        raise RuntimeError(f"RCON packet too short: {len(data)}")
-    rid, ptype = struct.unpack_from("<ii", data, 0)
-    body = data[8:-2].decode("utf-8", errors="replace") if len(data) > 10 else ""
-    return rid, ptype, body
-
-
-def _recv_exact(sock: socket.socket, n: int) -> bytes:
-    buf = bytearray()
-    while len(buf) < n:
-        chunk = sock.recv(n - len(buf))
-        if not chunk:
-            raise RuntimeError(f"RCON connection closed after {len(buf)}/{n} bytes")
-        buf.extend(chunk)
-    return bytes(buf)
 
 
 def _recv_response(sock: socket.socket) -> str:
@@ -100,16 +83,6 @@ def _rcon_batch_call(
         return results
     finally:
         sock.close()
-
-
-# ---------------------------------------------------------------------------
-# Tool definition
-# ---------------------------------------------------------------------------
-
-_RCON_HOST = "localhost"
-_RCON_PORT = int(os.environ.get("FACTORIO_RCON_PORT", "27015"))
-_RCON_PASSWORD = os.environ.get("FACTORIO_RCON_PASSWORD", "yoitsu-smoke")
-_MAX_OUTPUT = 4096
 
 
 def factorio_rcon_batch(commands: list[str]) -> object:
