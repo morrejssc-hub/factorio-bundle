@@ -8,5 +8,4 @@ def implementer() -> JobSpec:
     return JobSpec(
         system_prompt="prompts/implementer.md",
         tools=["bash"],
-        require_commit=True,
     )
