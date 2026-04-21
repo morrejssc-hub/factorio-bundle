@@ -28,4 +28,6 @@ git commit -m "opt: Add Lua script for querying game tick"
 
 6. Report the git commit SHA.
 
+If the change is already present (verified with `cat <FILE>` and `git log --oneline -5`), simply report that and stop — no new commit is needed.
+
 Make only the change described in the PROPOSAL. Work directly in your workspace directory.

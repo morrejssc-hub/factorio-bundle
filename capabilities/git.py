@@ -1,7 +1,7 @@
-"""Git capability for target workspace lifecycle.
+"""Git capability for workspace lifecycle.
 
-setup: clone target repo
-finalize: push target changes (role-based)
+setup: clone workspace repo
+finalize: push workspace changes (role-based)
 
 Events emitted (canonical):
 - coordinator.capability.completed  data.name encodes sub-operation
@@ -23,22 +23,22 @@ _PUSH_ROLES = ("worker", "architect", "implementer")
 def setup(ctx: CapabilityContext) -> CapabilityResult:
     events: list[EventSpec] = []
 
-    if not ctx.target_path:
-        return CapabilityResult(ok=False, events=events, error="target_path not provided")
+    if not ctx.workspace_path:
+        return CapabilityResult(ok=False, events=events, error="workspace_path not provided")
 
-    target_repo = ctx.target_repo or os.environ.get("TARGET_REPO", "")
-    if not target_repo:
-        return CapabilityResult(ok=False, events=events, error="TARGET_REPO not available")
+    workspace_repo = ctx.workspace_repo or os.environ.get("WORKSPACE_REPO", "")
+    if not workspace_repo:
+        return CapabilityResult(ok=False, events=events, error="WORKSPACE_REPO not available")
 
     try:
-        git_clone(target_repo, str(ctx.target_path))
-        target_sha = read_head_sha(ctx.target_path)
+        git_clone(workspace_repo, str(ctx.workspace_path))
+        workspace_sha = read_head_sha(ctx.workspace_path)
         events.append(EventSpec(
             type="coordinator.capability.completed",
             data={"name": "git.cloned", "job_id": ctx.job_id,
-                  "target_repo": target_repo, "target_sha": (target_sha or "")[:12]},
+                  "workspace_repo": workspace_repo, "workspace_sha": (workspace_sha or "")[:12]},
         ))
-        logger.info(f"[{ctx.job_id}] Git: cloned target @ {(target_sha or '')[:12]}")
+        logger.info(f"[{ctx.job_id}] Git: cloned workspace @ {(workspace_sha or '')[:12]}")
         return CapabilityResult(ok=True, events=events)
 
     except Exception as exc:
@@ -53,11 +53,11 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
 def finalize(ctx: CapabilityContext) -> CapabilityResult:
     events: list[EventSpec] = []
 
-    if not ctx.target_path:
+    if not ctx.workspace_path:
         return CapabilityResult(ok=True, events=events)
 
-    target_repo = ctx.target_repo or os.environ.get("TARGET_REPO", "")
-    if not target_repo:
+    workspace_repo = ctx.workspace_repo or os.environ.get("WORKSPACE_REPO", "")
+    if not workspace_repo:
         return CapabilityResult(ok=True, events=events)
 
     if ctx.role not in _PUSH_ROLES:
@@ -70,14 +70,14 @@ def finalize(ctx: CapabilityContext) -> CapabilityResult:
         return CapabilityResult(ok=True, events=events)
 
     try:
-        git_push(ctx.target_path, target_repo, branch="main")
-        target_sha = read_head_sha(ctx.target_path)
+        git_push(ctx.workspace_path, workspace_repo, branch="main")
+        workspace_sha = read_head_sha(ctx.workspace_path)
         events.append(EventSpec(
             type="coordinator.capability.completed",
             data={"name": "git.pushed", "job_id": ctx.job_id,
-                  "target_repo": target_repo, "target_sha": (target_sha or "")[:12]},
+                  "workspace_repo": workspace_repo, "workspace_sha": (workspace_sha or "")[:12]},
         ))
-        logger.info(f"[{ctx.job_id}] Git: pushed target @ {(target_sha or '')[:12]}")
+        logger.info(f"[{ctx.job_id}] Git: pushed workspace @ {(workspace_sha or '')[:12]}")
         return CapabilityResult(ok=True, events=events)
 
     except Exception as exc:
