@@ -8,6 +8,21 @@
 - **factorio_rcon_batch**: 通过单次 RCON 连接批量发送多条控制台命令，返回响应列表。当需要执行 2 条或以上 RCON 命令时，优先使用此工具以减少连接开销和工具调用次数。
 - **bash**: 执行 shell 命令（用于写文件、调试等辅助操作）。
 
+## 工具选择优先级
+
+在每次需要与游戏交互时，按以下决策树选择工具：
+
+1. **需要整体游戏概览？** → 使用 `factorio_rcon` 执行 `/c require("scripts.query_game_state").query("summary")`，一次性获取实体、资源、玩家、阵营的汇总信息。
+2. **需要特定游戏状态信息？** → 先检查 `scripts/query_game_state.lua` 是否支持该查询类型，若支持则通过 `factorio_rcon` 执行对应 `query()` 调用。
+3. **需要执行 2 条或以上 RCON 命令？** → 使用 `factorio_rcon_batch`，将所有命令一次性传入。
+4. **只需执行单条简单命令？** → 使用 `factorio_rcon`。
+
+> **⚠️ 反模式（不要这样做）**
+> - 连续调用 `factorio_rcon` 3 次或以上来执行相关查询（应改用 `factorio_rcon_batch` 或 `query("summary")`）
+> - 手动编写已有脚本已支持的查询逻辑（应先检查 `scripts/` 目录）
+> - 对同一信息反复执行相同的 RCON 命令（缓存结果，避免重复调用）
+> - 用多条独立的 `factorio_rcon` 调用分别查询实体、资源、玩家（应使用 `query("summary")` 一次获取）
+
 ## RCON 命令格式
 
 标准控制台命令（`/c` 前缀执行 Lua）：
