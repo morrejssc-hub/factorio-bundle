@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+from pathlib import Path
 import time
 import urllib.request
 
@@ -38,14 +40,19 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
     events: list[EventSpec] = []
 
     try:
+        factorio_data_vol = os.environ.get("POD_COMMS_VOL", "")
+        factorio_data_path = Path("/volumes/comms")
+        (factorio_data_path / "config").mkdir(parents=True, exist_ok=True)
+        (factorio_data_path / "config" / "rconpw").write_text(RCON_PASSWORD)
+
         payload = json.dumps({
             "name": "factorio-server",
             "image": "docker.io/factoriotools/factorio:stable",
             "env": {
-                "FACTORIO_PORT": str(FACTORIO_PORT),
-                "FACTORIO_RCON_PASSWORD": RCON_PASSWORD,
-                "FACTORIO_RCON_PORT": str(RCON_PORT),
+                "PORT": str(FACTORIO_PORT),
+                "RCON_PORT": str(RCON_PORT),
             },
+            "volumes": [f"{factorio_data_vol}:/factorio:rw"] if factorio_data_vol else [],
         }).encode()
         req = urllib.request.Request(
             f"{ctx.trenni_url}/containers",
