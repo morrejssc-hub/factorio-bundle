@@ -212,7 +212,53 @@
 /c require("scripts.query_research").query({force = "player", limit = 20})
 ```
 
+### scripts/query_iron_plate_line.lua
+
+最小铁板生产线一次性查询脚本。扫描 burner-mining-drill、stone-furnace、inserter 实体，报告位置、方向、燃料库存、输入/输出库存、采矿目标、拾取/放置目标、铁板数量和阻塞原因。
+
+使用方式：
+```
+/c require("scripts.query_iron_plate_line").query({surface = "nauvis"})
+```
+
+返回信息：
+
+| 信息项 | 说明 |
+|-------|------|
+| burner_mining_drills | 所有燃烧采矿钻的列表，含位置、方向、燃料库存、输出库存、采矿目标、阻塞原因 |
+| stone_furnaces | 所有石炉的列表，含位置、方向、燃料库存、输入库存、输出库存、铁板数量、是否正在熔炼、阻塞原因 |
+| inserters | 所有机械臂的列表，含位置、方向、拾取目标、放置目标、手持物品、铁板数量、阻塞原因 |
+| total_iron_plates | 所有实体中铁板的总数量 |
+| game_tick | 查询时的游戏 tick |
+
+使用示例：
+```
+-- 查询 nauvis 上的最小铁板生产线状态
+/c require("scripts.query_iron_plate_line").query({surface = "nauvis"})
+```
+
 > **提示**：在组合新的 RCON 命令前，始终先查看 `scripts/` 目录。复用已有脚本可以减少工具重复调用，提高效率。
+
+## ⚠️ Stone Furnace 重要说明
+
+**stone-furnace 不应像 assembling-machine 那样依赖 `set_recipe`。**
+
+- **stone-furnace 没有 `set_recipe` 机制**：`furnace.get_recipe()` 对 stone-furnace 返回 `nil` 或 `"none"`，这是**正常行为**，不代表熔炉故障。
+- **自动熔炼**：stone-furnace 在满足以下条件时自动熔炼 iron-ore → iron-plate：
+  1. 输入库存（`furnace_source`）中有 iron-ore
+  2. 燃料库存（`furnace_fuel`）中有燃料（如 coal、wood）
+- **正确验证方式**：
+  - ✅ 检查 `furnace_source` 库存是否有 iron-ore
+  - ✅ 检查 `furnace_fuel` 库存是否有燃料
+  - ✅ 检查 `furnace_result` 库存是否有 iron-plate 产出
+  - ✅ 检查 `furnace.is_crafting` 是否为 `true`
+  - ❌ **不要**仅凭 `get_recipe()` 返回 `nil`/`none` 就判断熔炉未工作
+- **常见阻塞原因**：
+  - `no_fuel`：燃料库存为空
+  - `no_input_ore`：输入库存为空（没有 iron-ore）
+  - `result_full`：输出库存已满，无法继续产出
+
+> **使用 `query_iron_plate_line` 脚本可以一次性获取所有诊断信息，包括 `has_fuel`、`has_input_ore`、`result_full` 等关键字段，避免误判。**
 
 ## 工作流程
 
