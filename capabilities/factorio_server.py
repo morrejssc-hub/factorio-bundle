@@ -39,6 +39,13 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
 
     events: list[EventSpec] = []
 
+    if ctx.role != "worker":
+        events.append(EventSpec(
+            type="coordinator.capability.completed",
+            data={"name": "factorio.skipped", "job_id": ctx.job_id, "role": ctx.role},
+        ))
+        return CapabilityResult(ok=True, events=events)
+
     try:
         factorio_data_vol = os.environ.get("POD_COMMS_VOL", "")
         factorio_data_path = Path("/volumes/comms")

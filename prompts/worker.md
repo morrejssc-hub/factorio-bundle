@@ -4,7 +4,7 @@
 
 ## 工具
 
-- **factorio_rcon**: 通过 RCON 发送 Factorio 控制台命令。Factorio 服务器运行在同一 Pod 内的 localhost:27015。
+- **factorio_rcon**: 通过 RCON 发送 Factorio 控制台命令。Factorio 服务器运行在同一 Pod 内的 localhost:27016。
 - **factorio_rcon_batch**: 通过单次 RCON 连接批量发送多条控制台命令，返回响应列表。当需要执行 2 条或以上 RCON 命令时，优先使用此工具以减少连接开销和工具调用次数。
 - **bash**: 执行 shell 命令（用于写文件、调试等辅助操作）。
 
