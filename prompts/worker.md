@@ -118,6 +118,100 @@
 
 > **提示**：当需要同时查询多种游戏状态（如实体数量 + 资源分布 + 玩家信息）时，优先使用 `query("summary")` 一次性获取，而不是分别调用多个 RCON 命令。
 
+### scripts/query_logistics.lua
+
+物流网络状态查询接口，支持机器人统计、充电状态、物流箱内容等查询。
+
+使用方式：
+```
+/c require("scripts.query_logistics").query("query_type", {params})
+```
+
+支持的查询类型：
+
+| 查询类型 | 参数 | 说明 |
+|---------|------|------|
+| `"summary"` | 无 | 所有物流网络概览（机器人数量、任务、充电状态） |
+| `"networks"` | `{ surface = "nauvis" }` | 每个物流网络的详细信息，包含机器人数量、任务统计 |
+| `"robots"` | `{ surface = "nauvis" }` | 跨所有网络的机器人统计（物流/建筑机器人、可用/活跃/充电数量） |
+| `"chests"` | `{ surface = "nauvis" }` | 物流箱内容汇总，包含存储物品和运输中物品 |
+| `"charging"` | `{ surface = "nauvis" }` | 每个网络的机器人充电状态和充电百分比 |
+
+使用示例：
+```
+-- 获取物流网络概览
+/c require("scripts.query_logistics").query("summary")
+
+-- 查询所有机器人统计
+/c require("scripts.query_logistics").query("robots")
+
+-- 查询特定 surface 的物流箱内容
+/c require("scripts.query_logistics").query("chests", {surface = "nauvis"})
+
+-- 查看机器人充电状态
+/c require("scripts.query_logistics").query("charging")
+```
+
+### scripts/query_production.lua
+
+生产/消费统计查询接口，支持物品产出率、熔炉吞吐量、组装机效率等查询。
+
+使用方式：
+```
+/c require("scripts.query_production").query("query_type", {params})
+```
+
+支持的查询类型：
+
+| 查询类型 | 参数 | 说明 |
+|---------|------|------|
+| `"items_per_minute"` | `{ force = "player", item = "iron-plate", limit = 20 }` | 各阵营物品每分钟产出/消耗量 |
+| `"furnace_throughput"` | `{ force = "player", surface = "nauvis", furnace_type = "steel-furnace" }` | 熔炉产出率和利用率 |
+| `"assembler_output"` | `{ force = "player", surface = "nauvis", assembler_type = "assembling-machine-3" }` | 组装机生产力和产出率 |
+| `"belt_throughput"` | `{ surface = "nauvis" }` | 传送带吞吐量估算 |
+| `"summary"` | 无 | 所有生产统计的快速概览（精简版） |
+
+使用示例：
+```
+-- 获取生产概览
+/c require("scripts.query_production").query("summary")
+
+-- 查询铁板每分钟产出
+/c require("scripts.query_production").query("items_per_minute", {item = "iron-plate"})
+
+-- 查询熔炉利用率
+/c require("scripts.query_production").query("furnace_throughput", {surface = "nauvis"})
+
+-- 查询组装机产出
+/c require("scripts.query_production").query("assembler_output")
+```
+
+### scripts/query_research.lua
+
+研究状态查询接口，返回当前研究进度、已研究科技数量、可研究的下一批科技。
+
+使用方式：
+```
+/c require("scripts.query_research").query({force = "player", limit = 10})
+```
+
+返回信息：
+
+| 信息项 | 说明 |
+|-------|------|
+| 当前研究 | 正在研究的科技名称、等级、进度百分比、所需科研包 |
+| 科技统计 | 已研究/可用/锁定科技数量 |
+| 下一批可研究 | 按成本排序的前 N 个可立即研究的科技 |
+
+使用示例：
+```
+-- 查询 player 阵营研究状态（默认 limit=10）
+/c require("scripts.query_research").query({force = "player"})
+
+-- 查询 player 阵营，显示前 20 个可研究科技
+/c require("scripts.query_research").query({force = "player", limit = 20})
+```
+
 > **提示**：在组合新的 RCON 命令前，始终先查看 `scripts/` 目录。复用已有脚本可以减少工具重复调用，提高效率。
 
 ## 工作流程
