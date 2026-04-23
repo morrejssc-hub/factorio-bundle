@@ -55,6 +55,6 @@ def _recv_exact(sock: socket.socket, n: int) -> bytes:
 # ---------------------------------------------------------------------------
 
 _RCON_HOST = "localhost"
-_RCON_PORT = int(os.environ.get("FACTORIO_RCON_PORT", "27015"))
+_RCON_PORT = int(os.environ.get("FACTORIO_RCON_PORT", "27016"))
 _RCON_PASSWORD = os.environ.get("FACTORIO_RCON_PASSWORD", "yoitsu-smoke")
 _MAX_OUTPUT = 4096

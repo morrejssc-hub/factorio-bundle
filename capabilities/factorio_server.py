@@ -7,7 +7,7 @@ Events emitted (canonical):
 - coordinator.capability.completed  data.name encodes sub-operation
 - coordinator.capability.failed     data.name encodes sub-operation
 
-RCON is available at localhost:27015 inside the pod.
+RCON is available at localhost:27016 inside the pod.
 Password: FACTORIO_RCON_PASSWORD="yoitsu-smoke"
 """
 from __future__ import annotations
@@ -22,7 +22,8 @@ from coordinator.capability import CapabilityContext, CapabilityResult, EventSpe
 logger = logging.getLogger(__name__)
 
 RCON_PASSWORD = "yoitsu-smoke"
-RCON_PORT = 27015
+FACTORIO_PORT = 34198
+RCON_PORT = 27016
 
 _container_id: str | None = None
 
@@ -41,6 +42,7 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
             "name": "factorio-server",
             "image": "docker.io/factoriotools/factorio:stable",
             "env": {
+                "FACTORIO_PORT": str(FACTORIO_PORT),
                 "FACTORIO_RCON_PASSWORD": RCON_PASSWORD,
                 "FACTORIO_RCON_PORT": str(RCON_PORT),
             },
@@ -59,7 +61,8 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
         events.append(EventSpec(
             type="coordinator.capability.completed",
             data={"name": "factorio.container_started", "job_id": ctx.job_id,
-                  "container_id": _container_id, "rcon_port": RCON_PORT},
+                  "container_id": _container_id, "factorio_port": FACTORIO_PORT,
+                  "rcon_port": RCON_PORT},
         ))
         logger.info(f"[{ctx.job_id}] Factorio container started: {_container_id}")
 
