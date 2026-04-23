@@ -11,6 +11,16 @@ environment:
     allowed_images:
       - docker.io/factoriotools/factorio:stable
 
+# Task environment fingerprint — baseline for all Factorio runs.
+# Trigger payload task_env can override any field.
+task_environment:
+  factorio_version: "1.1.110"
+  scenario: freeplay
+  save:
+    uri: file:///volumes/bundle/saves/baseline.zip
+    digest: "sha256:placeholder"
+    size: 0
+
 observation:
   analyzers:
     - tool_repetition
