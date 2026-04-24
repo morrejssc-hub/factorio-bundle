@@ -141,6 +141,8 @@ def finalize(ctx: CapabilityContext) -> CapabilityResult:
     global _container_id
 
     events: list[EventSpec] = []
+    ok = True
+    error: str | None = None
 
     if not _container_id:
         logger.info(f"[{ctx.job_id}] No Factorio container to stop")
@@ -175,18 +177,22 @@ def finalize(ctx: CapabilityContext) -> CapabilityResult:
                 },
             ))
 
-        stop_event = _stop_container(ctx)
-        events.append(stop_event)
-        _container_id = None
-        return CapabilityResult(ok=True, events=events)
-
     except Exception as exc:
+        ok = False
+        error = str(exc)
         logger.error(f"[{ctx.job_id}] Factorio finalize failed: {exc}")
         events.append(EventSpec(
             type="coordinator.capability.failed",
             data={"name": "factorio.finalize_failed", "job_id": ctx.job_id, "error": str(exc)},
         ))
-        return CapabilityResult(ok=False, events=events, error=str(exc))
+
+    finally:
+        if _container_id:
+            stop_event = _stop_container(ctx)
+            events.append(stop_event)
+            _container_id = None
+
+    return CapabilityResult(ok=ok, events=events, error=error)
 
 
 def _stage_initial_save(ctx: CapabilityContext) -> Path | None:
@@ -260,7 +266,7 @@ def _run_audit_case(ctx: CapabilityContext) -> dict[str, object]:
     if not acceptance_path.exists():
         raise FileNotFoundError(f"acceptance script not found: {acceptance_path}")
 
-    command = "/c " + acceptance_path.read_text()
+    command = _lua_console_command(acceptance_path.read_text())
     output = _rcon_call(command, timeout=60.0)
     metrics = _parse_metrics(output)
     passed, failures = _evaluate_pass_criteria(metrics, case.get("pass_criteria") or {})
@@ -292,6 +298,16 @@ def _run_audit_case(ctx: CapabilityContext) -> dict[str, object]:
         result["artifact_ref"] = {"uri": uri, "digest": digest, "size": len(payload)}
 
     return result
+
+
+def _lua_console_command(script: str) -> str:
+    """Factorio console commands are single-line; keep acceptance Lua executable."""
+    lines = []
+    for line in script.splitlines():
+        stripped = line.strip()
+        if stripped:
+            lines.append(stripped)
+    return "/c " + " ".join(lines)
 
 
 def _load_suite(bundle_path: Path) -> dict:
