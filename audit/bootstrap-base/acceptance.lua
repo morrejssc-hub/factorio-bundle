@@ -1,8 +1,15 @@
 local force = game.forces.player
-local produced = force.item_production_statistics.get_input_count("automation-science-pack")
+local produced = 0
 local in_world = 0
 
 for _, surface in pairs(game.surfaces) do
+  if force.get_item_production_statistics then
+    local stats = force.get_item_production_statistics(surface)
+    if stats then
+      produced = produced + stats.get_input_count("automation-science-pack")
+    end
+  end
+
   for _, entity in pairs(surface.find_entities_filtered{force = force}) do
     if entity.valid and entity.get_inventory then
       for _, inventory_id in pairs(defines.inventory) do
