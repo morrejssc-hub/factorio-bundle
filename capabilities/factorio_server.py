@@ -484,12 +484,14 @@ def _wait_for_latest_save(*, after_mtime: float, timeout: float = 30.0) -> Path:
         saves = sorted(FACTORIO_SAVES_PATH.glob("*.zip"), key=lambda p: p.stat().st_mtime)
         if saves:
             latest = saves[-1]
-            if latest.stat().st_mtime >= after_mtime:
+            if latest.stat().st_mtime > after_mtime:
                 return latest
         time.sleep(1)
-    if latest is not None:
-        return latest
-    raise FileNotFoundError(f"No Factorio save found in {FACTORIO_SAVES_PATH}")
+    if latest is None:
+        raise FileNotFoundError(f"No Factorio save found in {FACTORIO_SAVES_PATH}")
+    raise TimeoutError(
+        f"No Factorio save newer than mtime {after_mtime} found in {FACTORIO_SAVES_PATH}"
+    )
 
 
 def _safe_save_name(uri: str) -> str:
