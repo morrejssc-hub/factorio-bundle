@@ -302,12 +302,28 @@ def _run_audit_case(ctx: CapabilityContext) -> dict[str, object]:
 
 def _lua_console_command(script: str) -> str:
     """Factorio console commands are single-line; keep acceptance Lua executable."""
-    lines = []
+    chunks: list[str] = []
+    buffer: list[str] = []
+    paren_depth = 0
     for line in script.splitlines():
         stripped = line.strip()
-        if stripped:
-            lines.append(stripped)
-    return "/c " + " ".join(lines)
+        if not stripped or stripped.startswith("--"):
+            continue
+        buffer.append(stripped)
+        paren_depth += stripped.count("(") - stripped.count(")")
+        if paren_depth <= 0:
+            chunk = " ".join(buffer)
+            if not chunk.endswith(";"):
+                chunk += ";"
+            chunks.append(chunk)
+            buffer = []
+            paren_depth = 0
+    if buffer:
+        chunk = " ".join(buffer)
+        if not chunk.endswith(";"):
+            chunk += ";"
+        chunks.append(chunk)
+    return "/c " + " ".join(chunks)
 
 
 def _load_suite(bundle_path: Path) -> dict:
