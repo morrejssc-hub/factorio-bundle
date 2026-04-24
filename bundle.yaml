@@ -3,6 +3,15 @@ description: Factorio automation bundle — headless server sidecar via capabili
 
 default_role: worker
 
+roles:
+  names:
+    - worker
+    - optimizer
+    - implementer
+    - auditor
+  default_entry: worker
+  default_exit: worker
+
 environment:
   capabilities:
     - git
