@@ -66,6 +66,7 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
         FACTORIO_SAVES_PATH.mkdir(parents=True, exist_ok=True)
         (FACTORIO_DATA_PATH / "config").mkdir(parents=True, exist_ok=True)
         (FACTORIO_DATA_PATH / "config" / "rconpw").write_text(RCON_PASSWORD)
+        _write_server_settings()
 
         staged_save = _stage_initial_save(ctx)
         env = {
@@ -229,6 +230,41 @@ def _stage_initial_save(ctx: CapabilityContext) -> Path | None:
         if actual != digest:
             raise ValueError(f"save_ref digest mismatch: expected {digest}, got {actual}")
     return dest
+
+
+def _write_server_settings() -> None:
+    settings = {
+        "name": "yoitsu-local-factorio",
+        "description": "Local Yoitsu Factorio capability server",
+        "tags": [],
+        "max_players": 0,
+        "visibility": {"public": False, "lan": False},
+        "username": "",
+        "password": "",
+        "token": "",
+        "game_password": "",
+        "require_user_verification": False,
+        "max_upload_in_kilobytes_per_second": 0,
+        "max_upload_slots": 5,
+        "minimum_latency_in_ticks": 0,
+        "max_heartbeats_per_second": 60,
+        "ignore_player_limit_for_returning_players": False,
+        "allow_commands": "admins-only",
+        "autosave_interval": 10,
+        "autosave_slots": 5,
+        "afk_autokick_interval": 0,
+        "auto_pause": True,
+        "auto_pause_when_players_connect": False,
+        "only_admins_can_pause_the_game": True,
+        "autosave_only_on_server": True,
+        "non_blocking_saving": False,
+        "minimum_segment_size": 25,
+        "minimum_segment_size_peer_count": 20,
+        "maximum_segment_size": 100,
+        "maximum_segment_size_peer_count": 10,
+    }
+    path = FACTORIO_DATA_PATH / "config" / "server-settings.json"
+    path.write_text(json.dumps(settings, indent=2) + "\n")
 
 
 def _write_final_save_ref(ctx: CapabilityContext) -> dict[str, object] | None:
