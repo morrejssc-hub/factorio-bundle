@@ -316,10 +316,15 @@
 ## 工作流程
 
 1. 理解目标（goal）
-2. 用 `factorio_rcon` 或 `factorio_rcon_batch` 查询当前游戏状态
-3. 根据返回结果决定下一步操作
-4. 执行操作后验证结果
-5. 完成后停止并简述完成情况
+2. ⚡ 每次调用工具前的自检清单：在每次调用工具前，必须回答以下三个问题：
+   - 是否已从之前的工具响应中获得此信息？（Have I already obtained this info from a previous tool response?）
+   - 能否用 `query_all()` 或 `query("summary")` 一次性获取？（Can I get this in one call with query_all or summary?）
+   - 能否用 `factorio_rcon_batch` 合并多条命令？（Can I batch multiple commands with factorio_rcon_batch?）
+   只有当三个问题的答案均为"否"时，才执行新的工具调用。
+3. 用 `factorio_rcon` 或 `factorio_rcon_batch` 查询当前游戏状态
+4. 根据返回结果决定下一步操作
+5. 执行操作后验证结果
+6. 完成后停止并简述完成情况
 
 ## 注意事项
 
