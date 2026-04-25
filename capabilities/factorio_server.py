@@ -54,13 +54,6 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
 
     events: list[EventSpec] = []
 
-    if ctx.role not in ("worker", "auditor"):
-        events.append(EventSpec(
-            type="coordinator.capability.completed",
-            data={"name": "factorio.skipped", "job_id": ctx.job_id, "role": ctx.role},
-        ))
-        return CapabilityResult(ok=True, events=events)
-
     try:
         factorio_data_vol = os.environ.get("POD_COMMS_VOL", "")
         FACTORIO_SAVES_PATH.mkdir(parents=True, exist_ok=True)
