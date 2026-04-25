@@ -6,6 +6,7 @@
 
 | 场景 | 最优工具/脚本 |
 |---|---|
+| 获取完整游戏概览 | `factorio_rcon` → `query_all()` |
 | 获取游戏概览 | `factorio_rcon` → `query_game_state("summary")` |
 | 检查生产状态 | `factorio_rcon` → `query_production("summary")` |
 | 检查物流状态 | `factorio_rcon` → `query_logistics("summary")` |
@@ -23,13 +24,15 @@
 
 在每次需要与游戏交互时，按以下决策树选择工具：
 
-1. **需要整体游戏概览？** → 使用 `factorio_rcon` 执行 `/c require("scripts.query_game_state").query("summary")`，一次性获取实体、资源、玩家、阵营的汇总信息。
-2. **需要特定游戏状态信息？** → 先检查 `scripts/query_game_state.lua` 是否支持该查询类型，若支持则通过 `factorio_rcon` 执行对应 `query()` 调用。
-3. **需要执行 2 条或以上 RCON 命令？** → 使用 `factorio_rcon_batch`，将所有命令一次性传入。
-4. **只需执行单条简单命令？** → 使用 `factorio_rcon`。
+1. **需要完整游戏概览（游戏状态 + 生产 + 研究）？** → 使用 `factorio_rcon` 执行 `/c require("scripts.query_all").query()`，**一次性获取**游戏 tick、实体统计、资源矿点、玩家信息、阵营研究状态、物品产出率等全部信息。这是最全面的单调用查询，优先于分别调用 `query_game_state`、`query_production`、`query_research`。
+2. **需要整体游戏概览（仅游戏状态）？** → 使用 `factorio_rcon` 执行 `/c require("scripts.query_game_state").query("summary")`，一次性获取实体、资源、玩家、阵营的汇总信息。
+3. **需要特定游戏状态信息？** → 先检查 `scripts/query_game_state.lua` 是否支持该查询类型，若支持则通过 `factorio_rcon` 执行对应 `query()` 调用。
+4. **需要执行 2 条或以上 RCON 命令？** → 使用 `factorio_rcon_batch`，将所有命令一次性传入。
+5. **只需执行单条简单命令？** → 使用 `factorio_rcon`。
 
 > **⚠️ 反模式（不要这样做）**
-> - 连续调用 `factorio_rcon` 3 次或以上来执行相关查询（应改用 `factorio_rcon_batch` 或 `query("summary")`）
+> - 连续调用 `factorio_rcon` 3 次或以上来执行相关查询（应改用 `factorio_rcon_batch` 或 `query_all()` / `query("summary")`）
+> - 分别调用 `query_game_state`、`query_production`、`query_research` 来获取完整概览（应使用 `query_all()` 一次获取）
 > - 手动编写已有脚本已支持的查询逻辑（应先检查 `scripts/` 目录）
 > - 对同一信息反复执行相同的 RCON 命令（缓存结果，避免重复调用）
 > - 用多条独立的 `factorio_rcon` 调用分别查询实体、资源、玩家（应使用 `query("summary")` 一次获取）
@@ -79,6 +82,45 @@
 ## Available Scripts
 
 在编写新的 RCON 命令之前，请先检查 `scripts/` 目录中是否有可复用的 Lua 脚本。使用 `/c` 指令配合 `require` 或直接读取脚本内容来执行它们。
+
+### scripts/query_all.lua
+
+**综合游戏概览查询脚本**：将游戏状态、生产统计、研究进度整合到**单次 RCON 调用**中返回。当你需要全面了解游戏当前状态时，这是最优选择——用一次调用替代 `query_game_state` + `query_production` + `query_research` 的多次调用。
+
+使用方式：
+```
+/c require("scripts.query_all").query({params})
+```
+
+可选参数：
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `force` | `nil`（所有阵营） | 指定要查询的阵营名称 |
+| `limit` | `15` | 物品产出率列表的最大条目数 |
+
+返回信息（一次性包含以下所有部分）：
+
+| 信息部分 | 说明 |
+|---------|------|
+| `tick_info` | 游戏 tick、暂停状态、游戏速度 |
+| `entity_counts` | 实体总数、唯一类型数、Top 20 实体（按数量排序） |
+| `resource_summary` | 资源矿点总数、总储量、各资源类型详情 |
+| `player_info` | 玩家数量、每个玩家的位置/surface/阵营/在线状态 |
+| `force_research` | 阵营数量、每个阵营的当前研究/科技统计/下一批可研究科技/实体总数 |
+| `items_per_minute` | 各阵营物品每分钟产出/消耗量（Top N） |
+| `furnace_throughput` | 熔炉产出率和利用率汇总 |
+
+使用示例：
+```
+-- 获取完整游戏概览（所有阵营）
+/c require("scripts.query_all").query()
+
+-- 仅查询 player 阵营，限制物品产出率显示前 20 项
+/c require("scripts.query_all").query({force = "player", limit = 20})
+```
+
+> **💡 优先使用场景**：当你需要了解游戏整体状况（如"现在游戏进展如何？"、"生产是否正常？"、"研究进度怎样？"）时，**始终优先使用 `query_all()`**，而不是分别调用多个查询脚本。这能显著减少工具调用次数和 RCON 连接开销。
 
 ### scripts/query_tick.lua
 
