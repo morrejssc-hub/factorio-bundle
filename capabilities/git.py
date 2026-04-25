@@ -24,7 +24,7 @@ from coordinator.git_ops import (
 
 logger = logging.getLogger(__name__)
 
-_PUSH_ROLES = ("worker", "architect", "implementer")
+_PUSH_ROLES = ("implementer",)
 _BASE_BRANCH = "main"
 
 
@@ -94,6 +94,17 @@ def finalize(ctx: CapabilityContext) -> CapabilityResult:
     branch_name = _work_branch(ctx.job_id)
     operation_name = "git.push_failed"
     try:
+        workspace_sha = read_head_sha(ctx.workspace_path)
+        if workspace_sha and ctx.bundle_sha and workspace_sha == ctx.bundle_sha:
+            events.append(EventSpec(
+                type="coordinator.capability.completed",
+                data={"name": "git.push_skipped", "job_id": ctx.job_id,
+                      "role": ctx.role, "reason": "no_workspace_changes",
+                      "workspace_sha": workspace_sha[:12]},
+            ))
+            logger.info(f"[{ctx.job_id}] Git: no workspace changes, skipping push")
+            return CapabilityResult(ok=True, events=events)
+
         git_push(ctx.workspace_path, workspace_repo, branch=branch_name)
         workspace_sha = read_head_sha(ctx.workspace_path)
         events.append(EventSpec(

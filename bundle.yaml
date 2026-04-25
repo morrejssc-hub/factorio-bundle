@@ -1,8 +1,6 @@
 name: factorio-bundle
 description: Factorio automation bundle — headless server sidecar via capability
 
-default_role: worker
-
 roles:
   names:
     - worker
@@ -11,14 +9,21 @@ roles:
     - auditor
   default_entry: worker
   default_exit: worker
+  capabilities:
+    worker:
+      - factorio_server
+    auditor:
+      - factorio_server
+    implementer:
+      - git
 
 environment:
-  capabilities:
-    - git
-    - factorio_server
   envelope:
     allowed_images:
       - docker.io/factoriotools/factorio:stable
+
+scheduling:
+  max_concurrent_jobs: 4
 
 # Task environment fingerprint — baseline for all Factorio runs.
 # Trigger payload task_env can override any field.
