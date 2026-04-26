@@ -73,7 +73,7 @@ end
 local function get_tick_info()
   return {
     tick = game.tick,
-    paused = game.tick_paused_value ~= nil,
+    paused = game.tick_paused or false,
     speed = game.speed,
   }
 end
