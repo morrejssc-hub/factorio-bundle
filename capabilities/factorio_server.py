@@ -109,6 +109,7 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
 
         _wait_container_running(ctx, _container_id)
         _wait_rcon_ready()
+        ready_tick = _ensure_simulation_advances()
 
         events.append(EventSpec(
             type="coordinator.capability.completed",
@@ -118,6 +119,7 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
                 "role": ctx.role,
                 "rcon_port": RCON_PORT,
                 "rcon_password": RCON_PASSWORD,
+                "details": {"game_tick": ready_tick},
             },
         ))
         return CapabilityResult(ok=True, events=events)
@@ -246,7 +248,7 @@ def _write_server_settings() -> None:
         "autosave_interval": 10,
         "autosave_slots": 5,
         "afk_autokick_interval": 0,
-        "auto_pause": True,
+        "auto_pause": False,
         "auto_pause_when_players_connect": False,
         "only_admins_can_pause_the_game": True,
         "autosave_only_on_server": True,
@@ -430,6 +432,30 @@ def _wait_rcon_ready() -> None:
             last_error = exc
             time.sleep(2)
     raise TimeoutError(f"Factorio RCON did not become ready: {last_error}")
+
+
+def _ensure_simulation_advances() -> int:
+    """Unpause Factorio's runtime tick loop and verify the world advances."""
+    _rcon_call("/silent-command game.tick_paused = false", timeout=5.0)
+    first = _read_game_tick()
+    time.sleep(5)
+    second = _read_game_tick()
+    if second <= first:
+        raise TimeoutError(f"Factorio simulation did not advance: tick {first} -> {second}")
+    return second
+
+
+def _read_game_tick() -> int:
+    output = _rcon_call("/silent-command rcon.print(game.tick)", timeout=5.0)
+    for line in reversed(output.splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            return int(line)
+        except ValueError:
+            continue
+    raise ValueError(f"Factorio tick probe returned no integer: {output!r}")
 
 
 def _stop_container(ctx: CapabilityContext) -> EventSpec:
