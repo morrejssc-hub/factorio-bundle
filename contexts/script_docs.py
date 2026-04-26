@@ -52,7 +52,7 @@ def provide_script_docs(goal: str) -> str:
 
 ## scripts/query_tick.lua
 
-查询当前游戏 tick 数。当游戏暂停时返回 `game.tick_paused_value`，否则返回 `game.tick`。
+查询当前游戏 tick 数，返回 `game.tick`。
 
 使用方式：
 ```
@@ -60,7 +60,7 @@ def provide_script_docs(goal: str) -> str:
 ```
 或通过 RCON 直接执行脚本内容：
 ```
-/c game.tick_paused_value or game.tick
+/c game.tick
 ```
 
 ---

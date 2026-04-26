@@ -246,7 +246,7 @@ def _write_server_settings() -> None:
         "autosave_interval": 10,
         "autosave_slots": 5,
         "afk_autokick_interval": 0,
-        "auto_pause": True,
+        "auto_pause": False,
         "auto_pause_when_players_connect": False,
         "only_admins_can_pause_the_game": True,
         "autosave_only_on_server": True,
