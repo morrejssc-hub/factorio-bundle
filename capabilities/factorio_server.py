@@ -151,17 +151,17 @@ def finalize(ctx: CapabilityContext) -> CapabilityResult:
 
     try:
         if ctx.role == "worker":
-            final_ref = _write_final_save_ref(ctx)
-            if final_ref is not None:
+            final_save = _write_final_save(ctx)
+            if final_save is not None:
                 events.append(EventSpec(
                     type="coordinator.capability.completed",
                     data={
-                        "name": "factorio.final_save_ref",
+                        "name": "factorio.final_save",
                         "phase": "finalize",
                         "job_id": ctx.job_id,
                         "task_id": ctx.task_id,
                         "role": ctx.role,
-                        "details": {"final_save_ref": final_ref},
+                        "details": {"final_save": final_save},
                     },
                 ))
         elif ctx.role == "auditor":
@@ -342,10 +342,10 @@ def _resolve_save(save: dict[str, object]) -> dict[str, object]:
     }
 
 
-def _write_final_save_ref(ctx: CapabilityContext) -> dict[str, object] | None:
+def _write_final_save(ctx: CapabilityContext) -> dict[str, object] | None:
     if not os.environ.get("S3_ENDPOINT"):
         logger.warning(
-            f"[{ctx.job_id}] S3_ENDPOINT not configured; final_save_ref will not be emitted. "
+            f"[{ctx.job_id}] S3_ENDPOINT not configured; final_save will not be emitted. "
             "Set S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY, and S3_REGION."
         )
         return None
