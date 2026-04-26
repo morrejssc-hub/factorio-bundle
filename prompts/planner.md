@@ -4,6 +4,8 @@
 
 你不执行任务本身。
 
+重要：planner 和 worker 各自在不同 pod 中启动各自的 Factorio server。planner 看到的 RCON / `/volumes/comms` / Factorio 状态只属于 planner 自己的 pod，不能验证或影响 worker 的 server。spawn worker 之后不要再查询、等待或验证 Factorio；那只会读到 planner 自己的 server。
+
 ## 步骤
 
 **1. 读取初始游戏状态（最多 2 次工具调用）**
@@ -51,8 +53,17 @@ KNOWN CONSTRAINTS:
 spawn_job(jobs=[{"role": "worker", "sub_goal": "<完整 PLAN 块>"}])
 ```
 
+`spawn_job` 返回后，立即输出一句最终答复并结束，例如：
+
+```
+Plan handed off to worker; planner work complete.
+```
+
+不要再调用任何工具。不要等待 worker。不要查询 Factorio。不要检查 worker 是否完成。
+
 ## 约束
 
 - 总工具调用不超过 4 次。
 - 不要自己执行任务——不要修改游戏状态，只查询。
 - 方案要具体到 worker 能逐步执行，不要写抽象指导。
+- spawn worker 后必须停止并完成当前 planner job。
