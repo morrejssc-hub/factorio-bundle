@@ -57,6 +57,14 @@ local function stat_to_per_minute(stat, name)
   return total / minutes, consumed / minutes
 end
 
+local function get_item_production_statistics(force)
+  local ok, stats = pcall(function() return force.item_production_statistics end)
+  if ok then
+    return stats
+  end
+  return nil
+end
+
 -- Helper: check if a technology's prerequisites are all satisfied
 local function prereqs_met(tech, force)
   if not tech.enabled then return false end
@@ -71,9 +79,10 @@ end
 
 -- === Section: Game Tick ===
 local function get_tick_info()
+  local paused_ok, paused_value = pcall(function() return game.tick_paused_value end)
   return {
     tick = game.tick,
-    paused = game.tick_paused_value ~= nil,
+    paused = paused_ok and paused_value ~= nil,
     speed = game.speed,
   }
 end
@@ -113,6 +122,23 @@ local function get_entity_counts()
     unique_types = #sorted,
     top_entities = top,
   }
+end
+
+local function get_force_entity_counts(force)
+  local counts = {}
+  local ok, get_counts = pcall(function() return force.get_entity_counts end)
+  if ok and type(get_counts) == "function" then
+    return get_counts()
+  end
+  for _, surface in pairs(game.surfaces) do
+    if surface and surface.valid then
+      local entities = surface.find_entities_filtered({ force = force })
+      for _, entity in pairs(entities) do
+        counts[entity.name] = (counts[entity.name] or 0) + 1
+      end
+    end
+  end
+  return counts
 end
 
 -- === Section: Resource Patches ===
@@ -216,7 +242,7 @@ local function get_force_research_status(params)
       end)
 
       -- Entity counts per force
-      local entity_counts = force.get_entity_counts()
+      local entity_counts = get_force_entity_counts(force)
       local total_force_entities = 0
       for _, count in pairs(entity_counts) do
         total_force_entities = total_force_entities + count
@@ -251,7 +277,7 @@ local function get_items_per_minute(params)
 
   for _, force in pairs(forces) do
     if force and force.valid then
-      local stats = force.item_production_statistics
+      local stats = get_item_production_statistics(force)
       if stats then
         local names = stats.get_names()
         for _, name in pairs(names) do

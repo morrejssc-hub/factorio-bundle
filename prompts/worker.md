@@ -6,12 +6,13 @@
 
 | 场景 | 最优工具/脚本 |
 |---|---|
-| 获取完整游戏概览 | `factorio_rcon` → `query_all()` |
-| 获取游戏概览 | `factorio_rcon` → `query_game_state("summary")` |
-| 检查生产状态 | `factorio_rcon` → `query_production("summary")` |
-| 检查物流状态 | `factorio_rcon` → `query_logistics("summary")` |
-| 执行 2+ 条命令 | `factorio_rcon_batch` |
-| 执行单条命令 | `factorio_rcon` |
+| 获取完整游戏概览 | `bash` → `rcon_run.py query_all.lua` |
+| 获取游戏概览 | `bash` → `rcon_run.py query_game_state.lua` |
+| 检查生产状态 | `bash` → `rcon_run.py query_production.lua` |
+| 检查物流状态 | `bash` → `rcon_run.py query_logistics.lua` |
+| 执行 2+ 条简单命令 | `factorio_rcon_batch` |
+| 执行单条简单命令 | `factorio_rcon` |
+| 执行多行 Lua（内联） | `bash` → python3 JSON encode → `factorio_rcon` |
 
 
 ## 工具
@@ -24,18 +25,18 @@
 
 在每次需要与游戏交互时，按以下决策树选择工具：
 
-1. **需要完整游戏概览（游戏状态 + 生产 + 研究）？** → 使用 `factorio_rcon` 执行 `/c require("scripts.query_all").query()`，**一次性获取**游戏 tick、实体统计、资源矿点、玩家信息、阵营研究状态、物品产出率等全部信息。这是最全面的单调用查询，优先于分别调用 `query_game_state`、`query_production`、`query_research`。
-2. **需要整体游戏概览（仅游戏状态）？** → 使用 `factorio_rcon` 执行 `/c require("scripts.query_game_state").query("summary")`，一次性获取实体、资源、玩家、阵营的汇总信息。
-3. **需要特定游戏状态信息？** → 先检查 `scripts/query_game_state.lua` 是否支持该查询类型，若支持则通过 `factorio_rcon` 执行对应 `query()` 调用。
+1. **需要完整游戏概览（游戏状态 + 生产 + 研究）？** → `bash` 执行 `python3 /volumes/bundle/scripts/rcon_run.py query_all.lua`，**一次性获取**游戏 tick、实体统计、资源矿点、玩家信息、阵营研究状态、物品产出率等全部信息。这是最全面的单调用查询，优先于分别调用各查询脚本。
+2. **需要整体游戏概览（仅游戏状态）？** → `bash` 执行 `python3 /volumes/bundle/scripts/rcon_run.py query_game_state.lua`，一次性获取实体、资源、玩家、阵营的汇总信息。
+3. **需要特定游戏状态信息？** → 先检查 `scripts/` 目录下是否有对应脚本，若有则用 `rcon_run.py` 执行。
 4. **需要执行 2 条或以上 RCON 命令？** → 使用 `factorio_rcon_batch`，将所有命令一次性传入。
 5. **只需执行单条简单命令？** → 使用 `factorio_rcon`。
 
 > **⚠️ 反模式（不要这样做）**
-> - 连续调用 `factorio_rcon` 3 次或以上来执行相关查询（应改用 `factorio_rcon_batch` 或 `query_all()` / `query("summary")`）
-> - 分别调用 `query_game_state`、`query_production`、`query_research` 来获取完整概览（应使用 `query_all()` 一次获取）
-> - 手动编写已有脚本已支持的查询逻辑（应先检查 `scripts/` 目录）
+> - 在 `factorio_rcon` 的 command 里写多行 Lua（第二行起变成"Unknown command"，需改用 bash + JSON encode）
+> - 在 RCON 命令里使用 `require("scripts.X")`（bundle 脚本不在 Factorio Lua 路径，改用 `rcon_run.py`）
+> - 连续调用 `factorio_rcon` 3 次或以上来执行相关查询（改用 `rcon_run.py query_all.lua` 或 `factorio_rcon_batch`）
+> - 手动编写已有脚本已支持的查询逻辑（先检查 `scripts/` 目录）
 > - 对同一信息反复执行相同的 RCON 命令（缓存结果，避免重复调用）
-> - 用多条独立的 `factorio_rcon` 调用分别查询实体、资源、玩家（应使用 `query("summary")` 一次获取）
 
 ## RCON 命令格式
 
@@ -81,15 +82,50 @@
 
 ## Available Scripts
 
-在编写新的 RCON 命令之前，请先检查 `scripts/` 目录中是否有可复用的 Lua 脚本。使用 `/c` 指令配合 `require` 或直接读取脚本内容来执行它们。
+在编写新的 RCON 命令之前，请先检查 `scripts/` 目录中是否有可复用的 Lua 脚本。
+
+> **⚠️ `require()` 在 RCON 中不可用**
+> Factorio RCON `/c` 执行在游戏 Lua 环境中，只能 `require` mod 目录的文件，**无法**访问 `/volumes/bundle/scripts/`。
+> 执行 bundle 脚本的正确方式是使用 `rcon_run.py` helper 或手写编码命令（见下文）。
+
+### 执行 bundle 脚本：使用 rcon_run.py
+
+通过 `bash` 工具调用 `rcon_run.py`，一次完成"读文件 → JSON 编码 → RCON 发送"：
+
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_all.lua
+```
+
+带参数：
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_all.lua force=player limit=20
+```
+
+### 执行多行 Lua（内联）
+
+**不要**在 `factorio_rcon` 的 command 里换行 —— Factorio 控制台按行解析，第二行会变成"Unknown command"。正确方式是用 `bash` 把多行 Lua JSON 编码后拼成单行 `/silent-command`：
+
+```bash
+python3 -c "
+import json
+lua = '''
+local f = game.forces.player
+f.technologies['automation'].researched = true
+rcon.print('done')
+'''
+print('/silent-command assert(load(' + json.dumps(lua) + '))()')
+"
+```
+
+把上面打印出的字符串原样传给 `factorio_rcon`。
 
 ### scripts/query_all.lua
 
-**综合游戏概览查询脚本**：将游戏状态、生产统计、研究进度整合到**单次 RCON 调用**中返回。当你需要全面了解游戏当前状态时，这是最优选择——用一次调用替代 `query_game_state` + `query_production` + `query_research` 的多次调用。
+**综合游戏概览查询脚本**：将游戏状态、生产统计、研究进度整合到**单次调用**中返回。
 
 使用方式：
-```
-/c require("scripts.query_all").query({params})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_all.lua
 ```
 
 可选参数：
@@ -112,36 +148,36 @@
 | `furnace_throughput` | 熔炉产出率和利用率汇总 |
 
 使用示例：
-```
--- 获取完整游戏概览（所有阵营）
-/c require("scripts.query_all").query()
+```bash
+# 所有阵营概览
+python3 /volumes/bundle/scripts/rcon_run.py query_all.lua
 
--- 仅查询 player 阵营，限制物品产出率显示前 20 项
-/c require("scripts.query_all").query({force = "player", limit = 20})
+# 仅查询 player 阵营，限制产出率显示前 20 项
+python3 /volumes/bundle/scripts/rcon_run.py query_all.lua force=player limit=20
 ```
 
-> **💡 优先使用场景**：当你需要了解游戏整体状况（如"现在游戏进展如何？"、"生产是否正常？"、"研究进度怎样？"）时，**始终优先使用 `query_all()`**，而不是分别调用多个查询脚本。这能显著减少工具调用次数和 RCON 连接开销。
+> **💡 优先使用场景**：当你需要了解游戏整体状况时，**始终优先使用 `query_all.lua`**，一次调用替代多个查询脚本。
 
 ### scripts/query_tick.lua
 
-查询当前游戏 tick 数。当游戏暂停时返回 `game.tick_paused_value`，否则返回 `game.tick`。
+查询当前游戏 tick 数。
 
 使用方式：
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_tick.lua
 ```
-/c require("scripts.query_tick")
+或用单行 `factorio_rcon`（此脚本足够简单可内联）：
 ```
-或通过 RCON 直接执行脚本内容：
-```
-/c game.tick_paused_value or game.tick
+/c rcon.print(game.tick)
 ```
 
 ### scripts/query_game_state.lua
 
-统一的游戏状态查询接口，支持多种查询类型，避免重复编写 RCON 命令。
+统一的游戏状态查询接口，支持多种查询类型。
 
 使用方式：
-```
-/c require("scripts.query_game_state").query("query_type", {params})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_game_state.lua
 ```
 
 支持的查询类型：
@@ -155,29 +191,22 @@
 | `"summary"` | 无 | 快速概览以上所有信息（精简版） |
 
 使用示例：
-```
--- 统计所有 inserter 数量
-/c require("scripts.query_game_state").query("entities", {filter = "inserter"})
-
--- 查询 nauvis 上的铁矿资源
-/c require("scripts.query_game_state").query("resources", {surface = "nauvis", resource = "iron-ore"})
-
--- 获取游戏状态概览
-/c require("scripts.query_game_state").query("summary")
-
--- 查看 player 阵营的研究进度
-/c require("scripts.query_game_state").query("forces", {force = "player"})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_game_state.lua
+python3 /volumes/bundle/scripts/rcon_run.py query_game_state.lua query=entities filter=inserter
+python3 /volumes/bundle/scripts/rcon_run.py query_game_state.lua query=resources surface=nauvis resource=iron-ore
+python3 /volumes/bundle/scripts/rcon_run.py query_game_state.lua query=forces force=player
 ```
 
-> **提示**：当需要同时查询多种游戏状态（如实体数量 + 资源分布 + 玩家信息）时，优先使用 `query("summary")` 一次性获取，而不是分别调用多个 RCON 命令。
+> **提示**：多种游戏状态一次获取时，优先用 `query_all.lua`。
 
 ### scripts/query_logistics.lua
 
 物流网络状态查询接口，支持机器人统计、充电状态、物流箱内容等查询。
 
 使用方式：
-```
-/c require("scripts.query_logistics").query("query_type", {params})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_logistics.lua
 ```
 
 支持的查询类型：
@@ -191,18 +220,11 @@
 | `"charging"` | `{ surface = "nauvis" }` | 每个网络的机器人充电状态和充电百分比 |
 
 使用示例：
-```
--- 获取物流网络概览
-/c require("scripts.query_logistics").query("summary")
-
--- 查询所有机器人统计
-/c require("scripts.query_logistics").query("robots")
-
--- 查询特定 surface 的物流箱内容
-/c require("scripts.query_logistics").query("chests", {surface = "nauvis"})
-
--- 查看机器人充电状态
-/c require("scripts.query_logistics").query("charging")
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_logistics.lua
+python3 /volumes/bundle/scripts/rcon_run.py query_logistics.lua query=robots
+python3 /volumes/bundle/scripts/rcon_run.py query_logistics.lua query=chests surface=nauvis
+python3 /volumes/bundle/scripts/rcon_run.py query_logistics.lua query=charging
 ```
 
 ### scripts/query_production.lua
@@ -210,8 +232,8 @@
 生产/消费统计查询接口，支持物品产出率、熔炉吞吐量、组装机效率等查询。
 
 使用方式：
-```
-/c require("scripts.query_production").query("query_type", {params})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_production.lua
 ```
 
 支持的查询类型：
@@ -225,18 +247,11 @@
 | `"summary"` | 无 | 所有生产统计的快速概览（精简版） |
 
 使用示例：
-```
--- 获取生产概览
-/c require("scripts.query_production").query("summary")
-
--- 查询铁板每分钟产出
-/c require("scripts.query_production").query("items_per_minute", {item = "iron-plate"})
-
--- 查询熔炉利用率
-/c require("scripts.query_production").query("furnace_throughput", {surface = "nauvis"})
-
--- 查询组装机产出
-/c require("scripts.query_production").query("assembler_output")
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_production.lua
+python3 /volumes/bundle/scripts/rcon_run.py query_production.lua query=items_per_minute item=iron-plate
+python3 /volumes/bundle/scripts/rcon_run.py query_production.lua query=furnace_throughput surface=nauvis
+python3 /volumes/bundle/scripts/rcon_run.py query_production.lua query=assembler_output
 ```
 
 ### scripts/query_research.lua
@@ -244,8 +259,8 @@
 研究状态查询接口，返回当前研究进度、已研究科技数量、可研究的下一批科技。
 
 使用方式：
-```
-/c require("scripts.query_research").query({force = "player", limit = 10})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_research.lua
 ```
 
 返回信息：
@@ -257,12 +272,8 @@
 | 下一批可研究 | 按成本排序的前 N 个可立即研究的科技 |
 
 使用示例：
-```
--- 查询 player 阵营研究状态（默认 limit=10）
-/c require("scripts.query_research").query({force = "player"})
-
--- 查询 player 阵营，显示前 20 个可研究科技
-/c require("scripts.query_research").query({force = "player", limit = 20})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_research.lua force=player limit=20
 ```
 
 ### scripts/query_iron_plate_line.lua
@@ -270,8 +281,8 @@
 最小铁板生产线一次性查询脚本。扫描 burner-mining-drill、stone-furnace、inserter 实体，报告位置、方向、燃料库存、输入/输出库存、采矿目标、拾取/放置目标、铁板数量和阻塞原因。
 
 使用方式：
-```
-/c require("scripts.query_iron_plate_line").query({surface = "nauvis"})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_iron_plate_line.lua
 ```
 
 返回信息：
@@ -285,9 +296,8 @@
 | game_tick | 查询时的游戏 tick |
 
 使用示例：
-```
--- 查询 nauvis 上的最小铁板生产线状态
-/c require("scripts.query_iron_plate_line").query({surface = "nauvis"})
+```bash
+python3 /volumes/bundle/scripts/rcon_run.py query_iron_plate_line.lua
 ```
 
 > **提示**：在组合新的 RCON 命令前，始终先查看 `scripts/` 目录。复用已有脚本可以减少工具重复调用，提高效率。
@@ -318,7 +328,7 @@
 1. 理解目标（goal）
 2. ⚡ 每次调用工具前的自检清单：在每次调用工具前，必须回答以下三个问题：
    - 是否已从之前的工具响应中获得此信息？（Have I already obtained this info from a previous tool response?）
-   - 能否用 `query_all()` 或 `query("summary")` 一次性获取？（Can I get this in one call with query_all or summary?）
+   - 能否用 `rcon_run.py query_all.lua` 或默认 summary 查询一次性获取？（Can I get this in one call with query_all.lua or summary?）
    - 能否用 `factorio_rcon_batch` 合并多条命令？（Can I batch multiple commands with factorio_rcon_batch?）
    只有当三个问题的答案均为"否"时，才执行新的工具调用。
 3. 用 `factorio_rcon` 或 `factorio_rcon_batch` 查询当前游戏状态

@@ -49,6 +49,14 @@ local function stat_to_per_minute(stat, name)
   return total / minutes, consumed / minutes
 end
 
+local function get_item_production_statistics(force)
+  local ok, stats = pcall(function() return force.item_production_statistics end)
+  if ok then
+    return stats
+  end
+  return nil
+end
+
 -- Query: items produced/consumed per minute
 -- Params (optional): { force = "player", item = "iron-plate", limit = 20 }
 local function query_items_per_minute(params)
@@ -61,7 +69,7 @@ local function query_items_per_minute(params)
 
   for _, force in pairs(forces) do
     if force and force.valid then
-      local stats = force.item_production_statistics
+      local stats = get_item_production_statistics(force)
       if stats then
         local names = stats.get_names()
         for _, name in pairs(names) do

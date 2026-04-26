@@ -167,6 +167,23 @@ local function query_players()
   return { query = "players", player_count = #players, players = players }
 end
 
+local function get_force_entity_counts(force)
+  local counts = {}
+  local ok, get_counts = pcall(function() return force.get_entity_counts end)
+  if ok and type(get_counts) == "function" then
+    return get_counts()
+  end
+  for _, surface in pairs(game.surfaces) do
+    if surface and surface.valid then
+      local entities = surface.find_entities_filtered({ force = force })
+      for _, entity in pairs(entities) do
+        counts[entity.name] = (counts[entity.name] or 0) + 1
+      end
+    end
+  end
+  return counts
+end
+
 -- Query: force and research status
 -- Params (optional): { force = "player" }
 local function query_forces(params)
@@ -202,11 +219,11 @@ local function query_forces(params)
         end
       end
 
-      -- Entity counts per force (using efficient force.get_entity_counts() API)
+      -- Entity counts per force. Factorio 2.x removed force.get_entity_counts().
       local entity_counts = {}
       local total_entities = 0
       local unique_types = 0
-      for name, count in pairs(force.get_entity_counts()) do
+      for name, count in pairs(get_force_entity_counts(force)) do
         entity_counts[name] = count
         total_entities = total_entities + count
         unique_types = unique_types + 1

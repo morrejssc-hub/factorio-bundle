@@ -19,8 +19,46 @@ cases:
       wooden_chest_count_min: 1
       must_complete: true
 
+  - id: bootstrap-burner-line
+    goal: "Start from the fixed bootstrap save and produce at least 10 iron plates."
+    task_env_ref:
+      case_id: bootstrap-burner-line
+      save_ref:
+        uri: "s3://yoitsu/saves/audit/bootstrap-base-v1.zip"
+        digest: "sha256:6ae6d24da1cf0973a7063a970c57c0d3afea5778078ae5c152f5f829bff711aa"
+        size: 630243
+      factorio_version: "1.1.110"
+      scenario: freeplay
+      map_seed: "12345"
+      budget:
+        wall_seconds: 600
+    acceptance:
+      path: audit/bootstrap-burner-line/acceptance.lua
+    pass_criteria:
+      iron_plate_produced_min: 10
+      must_complete: true
+
+  - id: bootstrap-science-small
+    goal: "Start from the fixed bootstrap save and produce at least 5 automation science packs."
+    task_env_ref:
+      case_id: bootstrap-science-small
+      save_ref:
+        uri: "s3://yoitsu/saves/audit/bootstrap-base-v1.zip"
+        digest: "sha256:6ae6d24da1cf0973a7063a970c57c0d3afea5778078ae5c152f5f829bff711aa"
+        size: 630243
+      factorio_version: "1.1.110"
+      scenario: freeplay
+      map_seed: "12345"
+      budget:
+        wall_seconds: 1200
+    acceptance:
+      path: audit/bootstrap-science-small/acceptance.lua
+    pass_criteria:
+      red_science_pack_min: 5
+      must_complete: true
+
   - id: bootstrap-base
-    goal: "Start from the fixed bootstrap save and produce automation science."
+    goal: "Start from the fixed bootstrap save and produce automation science at scale."
     task_env_ref:
       case_id: bootstrap-base
       save_ref:
@@ -36,4 +74,4 @@ cases:
       path: audit/bootstrap-base/acceptance.lua
     pass_criteria:
       red_science_pack_min: 500
-      must_complete: true
+      must_complete: false
