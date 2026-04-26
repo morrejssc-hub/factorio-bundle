@@ -44,10 +44,10 @@ CHANGE: <description of what to add/remove/edit>
 REASON: <why this will help>
 ```
 
-5. After outputting the proposal, use the `spawn_job` tool to hand off to the implementer:
+5. After outputting the proposal, hand it off to the implementer:
 
 ```json
 spawn_job(jobs=[{"role": "implementer", "sub_goal": "<full PROPOSAL block from step 4>"}])
 ```
 
-Do not make the change yourself — use `spawn_job` to hand off to the implementer. Do NOT use bash to call Pasloe directly.
+Do not make the change yourself.
