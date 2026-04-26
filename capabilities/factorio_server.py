@@ -1,6 +1,6 @@
 """Factorio headless server capability.
 
-setup(ctx)    starts factoriotools/factorio:stable, optionally from task_env_ref.save_ref
+setup(ctx)    starts factoriotools/factorio:stable, optionally from task_env_ref.save
 finalize(ctx) saves the final game state, writes an artifacts.yaml entry, and stops it
 
 Only canonical capability events are emitted. Sub-semantics are encoded in
@@ -44,6 +44,7 @@ _SERVERDATA_EXECCOMMAND = 2
 _SERVERDATA_RESPONSE_VALUE = 0
 
 _container_id: str | None = None
+_initial_save: dict[str, object] | None = None
 
 
 def _auth_headers(pod_token: str) -> dict[str, str]:
@@ -51,11 +52,12 @@ def _auth_headers(pod_token: str) -> dict[str, str]:
 
 
 def setup(ctx: CapabilityContext) -> CapabilityResult:
-    global _container_id
+    global _container_id, _initial_save
 
     events: list[EventSpec] = []
 
     try:
+        _initial_save = None
         factorio_data_vol = os.environ.get("POD_COMMS_VOL", "")
         FACTORIO_SAVES_PATH.mkdir(parents=True, exist_ok=True)
         (FACTORIO_DATA_PATH / "config").mkdir(parents=True, exist_ok=True)
@@ -195,38 +197,31 @@ def finalize(ctx: CapabilityContext) -> CapabilityResult:
 
 
 def _stage_initial_save(ctx: CapabilityContext) -> Path | None:
-    save_ref = (ctx.task_env_ref or {}).get("save_ref")
-    if not isinstance(save_ref, dict) or not save_ref.get("uri"):
+    global _initial_save
+
+    save = (ctx.task_env_ref or {}).get("save")
+    if not isinstance(save, dict):
         return None
 
-    uri = str(save_ref["uri"])
+    resolved = _resolve_save(save)
+    _initial_save = resolved
+    uri = str(resolved["uri"])
     dest = FACTORIO_SAVES_PATH / _safe_save_name(uri)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    digest = str(save_ref.get("digest") or "")
-    expected_size = int(save_ref.get("size") or 0)
 
     if uri.startswith("s3://"):
         s3 = build_s3_client_from_env()
         if s3 is None:
-            raise RuntimeError("S3_ENDPOINT is required to download task_env_ref.save_ref")
-        s3.download(uri, dest, expected_hash=digest)
+            raise RuntimeError("S3_ENDPOINT is required to download task_env_ref.save")
+        s3.download(uri, dest)
     elif uri.startswith("file://"):
         src = Path(uri[7:])
         if not src.exists():
-            raise FileNotFoundError(f"save_ref file not found: {src}")
+            raise FileNotFoundError(f"save file not found: {src}")
         shutil.copy2(src, dest)
     else:
-        raise ValueError(f"Unsupported save_ref uri: {uri}")
+        raise ValueError(f"Unsupported save uri: {uri}")
 
-    actual_size = dest.stat().st_size
-    if expected_size and actual_size != expected_size:
-        raise ValueError(
-            f"save_ref size mismatch: expected {expected_size}, got {actual_size}"
-        )
-    if digest:
-        actual = f"sha256:{_sha256(dest)}"
-        if actual != digest:
-            raise ValueError(f"save_ref digest mismatch: expected {digest}, got {actual}")
     return dest
 
 
@@ -283,6 +278,70 @@ def _ensure_simulation_advances() -> int:
     return after
 
 
+def _parse_save_version(value: object) -> int | None:
+    if value in (None, "", "latest"):
+        return None
+    if isinstance(value, bool):
+        raise ValueError("save.version must be an integer or omitted for latest")
+    try:
+        version = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("save.version must be an integer or omitted for latest") from exc
+    if version < 1:
+        raise ValueError("save.version must be >= 1")
+    return version
+
+
+def _save_uri(prefix: str, version: int) -> str:
+    return f"{prefix.rstrip('/')}-v{version}.zip"
+
+
+def _s3_key_prefix(prefix: str) -> str:
+    if not prefix.startswith("s3://"):
+        return prefix
+    parts = prefix.split("/", 3)
+    return parts[3] if len(parts) == 4 else ""
+
+
+def _latest_save_version(prefix: str) -> int:
+    pattern = re.compile(rf"^{re.escape(_s3_key_prefix(prefix))}-v(\d+)\.zip$", re.IGNORECASE)
+
+    if prefix.startswith("s3://"):
+        s3 = build_s3_client_from_env()
+        if s3 is None:
+            raise RuntimeError("S3_ENDPOINT is required to resolve latest task_env_ref.save")
+        keys = s3.list_keys(f"{prefix.rstrip('/')}-v")
+        versions = [int(m.group(1)) for key in keys if (m := pattern.match(key))]
+    elif prefix.startswith("file://"):
+        file_prefix = Path(prefix[7:])
+        glob_pattern = f"{file_prefix.name}-v*.zip"
+        versions = []
+        for path in file_prefix.parent.glob(glob_pattern):
+            match = re.fullmatch(rf"{re.escape(file_prefix.name)}-v(\d+)\.zip", path.name, re.IGNORECASE)
+            if match:
+                versions.append(int(match.group(1)))
+    else:
+        raise ValueError(f"Unsupported save prefix: {prefix}")
+
+    if not versions:
+        raise FileNotFoundError(f"No save versions found for prefix: {prefix}")
+    return max(versions)
+
+
+def _resolve_save(save: dict[str, object]) -> dict[str, object]:
+    prefix = str(save.get("prefix") or "").rstrip("/")
+    if not prefix:
+        raise ValueError("task_env_ref.save.prefix is required")
+    version = _parse_save_version(save.get("version"))
+    if version is None:
+        version = _latest_save_version(prefix)
+    return {
+        "prefix": prefix,
+        "version": version,
+        "uri": _save_uri(prefix, version),
+    }
+
+
 def _write_final_save_ref(ctx: CapabilityContext) -> dict[str, object] | None:
     if not os.environ.get("S3_ENDPOINT"):
         logger.warning(
@@ -303,10 +362,13 @@ def _write_final_save_ref(ctx: CapabilityContext) -> dict[str, object] | None:
     shutil.copy2(final_save, artifact_path)
 
     bucket = os.environ.get("S3_BUCKET", "yoitsu-artifacts")
-    key = f"factorio/final-saves/{ctx.task_id or ctx.job_id}/{ctx.job_id}.zip"
-    uri = f"s3://{bucket}/{key}"
+    prefix = f"s3://{bucket}/factorio/final-saves/{ctx.task_id or ctx.job_id}/{ctx.job_id}"
+    input_version = int((_initial_save or {}).get("version") or 0)
+    version = input_version + 1 if input_version else 1
+    uri = _save_uri(prefix, version)
+
     _record_artifact(ctx.bundle_path / "artifacts.yaml", artifact_name, uri, digest, size, ctx.job_id)
-    return {"uri": uri, "digest": digest, "size": size}
+    return {"prefix": prefix, "version": version, "uri": uri, "digest": digest, "size": size}
 
 
 def _run_audit_case(ctx: CapabilityContext) -> dict[str, object]:

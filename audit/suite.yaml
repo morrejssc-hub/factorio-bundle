@@ -4,10 +4,9 @@ cases:
     goal: "Start from the fixed bootstrap save and place at least one wooden chest for the player force."
     task_env_ref:
       case_id: bootstrap-smoke
-      save_ref:
-        uri: "s3://yoitsu/saves/audit/bootstrap-base-v1.zip"
-        digest: "sha256:6ae6d24da1cf0973a7063a970c57c0d3afea5778078ae5c152f5f829bff711aa"
-        size: 630243
+      save:
+        prefix: "s3://yoitsu/saves/audit/bootstrap-base"
+        version: 1
       factorio_version: "1.1.110"
       scenario: freeplay
       map_seed: "12345"
@@ -23,10 +22,9 @@ cases:
     goal: "Start from the fixed bootstrap save and produce automation science."
     task_env_ref:
       case_id: bootstrap-base
-      save_ref:
-        uri: "s3://yoitsu/saves/audit/bootstrap-base-v1.zip"
-        digest: "sha256:6ae6d24da1cf0973a7063a970c57c0d3afea5778078ae5c152f5f829bff711aa"
-        size: 630243
+      save:
+        prefix: "s3://yoitsu/saves/audit/bootstrap-base"
+        version: 1
       factorio_version: "1.1.110"
       scenario: freeplay
       map_seed: "12345"
