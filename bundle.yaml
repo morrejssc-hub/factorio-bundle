@@ -3,13 +3,16 @@ description: Factorio automation bundle — headless server sidecar via capabili
 
 roles:
   names:
+    - planner
     - worker
     - optimizer
     - implementer
     - auditor
-  default_entry: worker
+  default_entry: planner
   default_exit: worker
   capabilities:
+    planner:
+      - factorio_server
     worker:
       - factorio_server
     auditor:

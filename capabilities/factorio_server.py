@@ -13,6 +13,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import shutil
 import socket
 import struct
@@ -109,6 +110,7 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
 
         _wait_container_running(ctx, _container_id)
         _wait_rcon_ready()
+        game_tick = _ensure_simulation_advances()
 
         events.append(EventSpec(
             type="coordinator.capability.completed",
@@ -118,6 +120,9 @@ def setup(ctx: CapabilityContext) -> CapabilityResult:
                 "role": ctx.role,
                 "rcon_port": RCON_PORT,
                 "rcon_password": RCON_PASSWORD,
+                "details": {
+                    "game_tick": game_tick,
+                },
             },
         ))
         return CapabilityResult(ok=True, events=events)
@@ -258,6 +263,24 @@ def _write_server_settings() -> None:
     }
     path = FACTORIO_DATA_PATH / "config" / "server-settings.json"
     path.write_text(json.dumps(settings, indent=2) + "\n")
+
+
+def _read_game_tick() -> int:
+    output = _rcon_call("/silent-command rcon.print(game.tick)", timeout=5.0)
+    match = re.search(r"\d+", output)
+    if match is None:
+        raise ValueError(f"RCON game.tick response contained no integer: {output!r}")
+    return int(match.group(0))
+
+
+def _ensure_simulation_advances() -> int:
+    _rcon_call("/silent-command game.tick_paused = false", timeout=5.0)
+    before = _read_game_tick()
+    time.sleep(1.0)
+    after = _read_game_tick()
+    if after <= before:
+        raise TimeoutError(f"Factorio simulation did not advance: before={before}, after={after}")
+    return after
 
 
 def _write_final_save_ref(ctx: CapabilityContext) -> dict[str, object] | None:

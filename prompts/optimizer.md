@@ -20,13 +20,13 @@ Focus on concrete improvements that reduce repetition or improve efficiency.
 
 ## Example proposals
 
-Creating a new Lua script to query game state:
+Creating a new structured primitive for a repeated game query:
 ```
-PROPOSAL: Add Lua script for querying Factorio game tick
+PROPOSAL: Add a factorio_script primitive for querying Factorio game tick
 
-FILE: scripts/query_tick.lua
-CHANGE: Create new file with Lua code to query /command game.tick
-REASON: Worker jobs repeatedly call factorio_rcon to query tick; a dedicated script abstracts this
+FILE: tools/factorio_script.py
+CHANGE: Add a named read primitive that calls the existing Lua helper script and returns the tick.
+REASON: Worker jobs should use named factorio_script primitives instead of raw RCON or ad hoc Lua.
 ```
 
 ## Your task
@@ -44,10 +44,10 @@ CHANGE: <description of what to add/remove/edit>
 REASON: <why this will help>
 ```
 
-5. After outputting the proposal, use the `spawn_job` tool to hand off to the implementer:
+5. After outputting the proposal, hand it off to the implementer:
 
 ```json
 spawn_job(jobs=[{"role": "implementer", "sub_goal": "<full PROPOSAL block from step 4>"}])
 ```
 
-Do not make the change yourself — use `spawn_job` to hand off to the implementer. Do NOT use bash to call Pasloe directly.
+Do not make the change yourself.
