@@ -20,13 +20,13 @@ Focus on concrete improvements that reduce repetition or improve efficiency.
 
 ## Example proposals
 
-Creating a new Lua script to query game state:
+Creating a new structured primitive for a repeated game query:
 ```
-PROPOSAL: Add Lua script for querying Factorio game tick
+PROPOSAL: Add a factorio_script primitive for querying Factorio game tick
 
-FILE: scripts/query_tick.lua
-CHANGE: Create new file with Lua code to query /command game.tick
-REASON: Worker jobs repeatedly call factorio_rcon to query tick; a dedicated script abstracts this
+FILE: tools/factorio_script.py
+CHANGE: Add a named read primitive that calls the existing Lua helper script and returns the tick.
+REASON: Worker jobs should use named factorio_script primitives instead of raw RCON or ad hoc Lua.
 ```
 
 ## Your task

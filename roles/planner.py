@@ -7,5 +7,5 @@ from yoitsu_contracts.bundle import JobSpec, role
 def planner() -> JobSpec:
     return JobSpec(
         system_prompt="prompts/planner.md",
-        tools=["factorio_rcon", "factorio_rcon_batch", "bash", "spawn_job"],
+        tools=["factorio_script", "spawn_job"],
     )
