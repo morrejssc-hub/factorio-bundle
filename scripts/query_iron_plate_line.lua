@@ -59,6 +59,21 @@ local function inventory_summary(inv)
   return table.concat(items, ", ")
 end
 
+local function entity_inventory(entity, define_name, fallback_index)
+  if not entity or not entity.valid then return nil end
+  local defines_inventory = defines and defines.inventory or {}
+  local define_index = defines_inventory[define_name]
+  if define_index then
+    local ok, inv = pcall(function() return entity.get_inventory(define_index) end)
+    if ok and inv then return inv end
+  end
+  if fallback_index then
+    local ok, inv = pcall(function() return entity.get_inventory(fallback_index) end)
+    if ok and inv then return inv end
+  end
+  return nil
+end
+
 -- Helper: get iron-plate count from an inventory
 local function count_iron_plate(inv)
   if not inv or not inv.valid then return 0 end
@@ -90,25 +105,21 @@ local function get_blocked_reason(entity)
     if not drop or not drop.valid then return "no_drop_target" end
     -- Check if inserter is holding an item but can't drop
     if entity.held_stack and entity.held_stack.valid_for_read then
-      if drop.get_inventory(defines.inventory.chest) then
-        local chest_inv = drop.get_inventory(defines.inventory.chest)
-        if chest_inv and not chest_inv.can_insert(entity.held_stack) then
-          return "drop_target_full"
-        end
+      local chest_inv = entity_inventory(drop, "chest", 1)
+      if chest_inv and not chest_inv.can_insert(entity.held_stack) then
+        return "drop_target_full"
       end
     end
     -- Check if pickup source has items
-    if pickup.get_inventory(defines.inventory.chest) then
-      local src_inv = pickup.get_inventory(defines.inventory.chest)
-      if src_inv and src_inv.is_empty() then return "pickup_source_empty" end
-    end
+    local src_inv = entity_inventory(pickup, "chest", 1)
+    if src_inv and src_inv.is_empty() then return "pickup_source_empty" end
   end
 
   -- For furnaces: check fuel and input
   if entity.type == "furnace" then
-    local fuel_inv = entity.get_inventory(defines.inventory.furnace_fuel)
-    local src_inv = entity.get_inventory(defines.inventory.furnace_source)
-    local result_inv = entity.get_inventory(defines.inventory.furnace_result)
+    local fuel_inv = entity_inventory(entity, "furnace_fuel", 1)
+    local src_inv = entity_inventory(entity, "furnace_source", 2)
+    local result_inv = entity_inventory(entity, "furnace_result", 3)
 
     if fuel_inv and fuel_inv.is_empty() then return "no_fuel" end
     if src_inv and src_inv.is_empty() then return "no_input_ore" end
@@ -147,8 +158,8 @@ local function query_burner_mining_drills(surface_name)
         }
       end
 
-      local fuel_inv = drill.get_inventory(defines.inventory.fuel)
-      local result_inv = drill.get_inventory(defines.inventory.drill_result)
+      local fuel_inv = entity_inventory(drill, "fuel", 1)
+      local result_inv = entity_inventory(drill, "drill_result", 2)
 
       table.insert(results, {
         entity = "burner-mining-drill",
@@ -184,9 +195,9 @@ local function query_stone_furnaces(surface_name)
 
   for _, furnace in pairs(furnaces) do
     if furnace and furnace.valid then
-      local fuel_inv = furnace.get_inventory(defines.inventory.furnace_fuel)
-      local src_inv = furnace.get_inventory(defines.inventory.furnace_source)
-      local result_inv = furnace.get_inventory(defines.inventory.furnace_result)
+      local fuel_inv = entity_inventory(furnace, "furnace_fuel", 1)
+      local src_inv = entity_inventory(furnace, "furnace_source", 2)
+      local result_inv = entity_inventory(furnace, "furnace_result", 3)
 
       -- NOTE: stone-furnace does NOT use set_recipe.
       -- get_recipe() returns nil for stone furnaces — this is NORMAL.
