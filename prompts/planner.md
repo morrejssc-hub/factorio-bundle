@@ -28,6 +28,14 @@
 3. 通过 `spawn_job` 把完整 PLAN 交给 worker。
 4. 交接后输出一句简短最终答复。
 
+对于“最小 iron ore -> iron plate 生产线并验证至少 10 个 iron-plate”这类目标，PLAN 固定使用：
+
+```text
+1. factorio_script(name="action.build_iron_plate_line")
+2. factorio_script(name="wait.seconds", args={"seconds": 5})
+3. factorio_script(name="read.iron_plate_line")
+```
+
 ## PLAN 格式
 
 ```text
