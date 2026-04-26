@@ -283,6 +283,14 @@ def _ensure_simulation_advances() -> int:
     return after
 
 
+def _next_save_version(input_uri: str) -> int | None:
+    """Return input save version incremented by 1, or None if no version pattern found."""
+    m = re.search(r"-v(\d+)(\.zip)$", input_uri, re.IGNORECASE)
+    if not m:
+        return None
+    return int(m.group(1)) + 1
+
+
 def _write_final_save_ref(ctx: CapabilityContext) -> dict[str, object] | None:
     if not os.environ.get("S3_ENDPOINT"):
         logger.warning(
@@ -302,9 +310,12 @@ def _write_final_save_ref(ctx: CapabilityContext) -> dict[str, object] | None:
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(final_save, artifact_path)
 
+    input_uri = ((ctx.task_env_ref or {}).get("save_ref") or {}).get("uri", "")
+    next_version = _next_save_version(input_uri) if input_uri else None
     bucket = os.environ.get("S3_BUCKET", "yoitsu-artifacts")
-    key = f"factorio/final-saves/{ctx.task_id or ctx.job_id}/{ctx.job_id}.zip"
-    uri = f"s3://{bucket}/{key}"
+    version_suffix = f"-v{next_version}" if next_version is not None else ""
+    uri = f"s3://{bucket}/factorio/final-saves/{ctx.task_id or ctx.job_id}/{ctx.job_id}{version_suffix}.zip"
+
     _record_artifact(ctx.bundle_path / "artifacts.yaml", artifact_name, uri, digest, size, ctx.job_id)
     return {"uri": uri, "digest": digest, "size": size}
 

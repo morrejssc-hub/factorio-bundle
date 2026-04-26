@@ -71,6 +71,8 @@ Plan handed off to worker; planner work complete.
 
 ## 约束
 
+- 分解给 worker 的子任务必须能在 200 次 agent 交互内完成；如果一个方案明显超过这个规模，就继续拆成更小、更可验证的 sibling job。
 - 总工具调用不超过 4 次，包含 `spawn_job`。
+- `spawn_job` 只能调用一次；工具返回成功后，立刻输出最终答复，不要再次查询、再次 spawn 或等待 worker。
 - 不要自己执行任务。
 - 方案要具体到 worker 能逐步执行，不要写抽象指导。
